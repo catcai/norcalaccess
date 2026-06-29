@@ -40,7 +40,7 @@ summary = (
 
 # Welch's t-test (using per-scene values)
 print("=" * 60)
-print("Per-animal means (used for table; t-test uses per-scene values)")
+print("Per-animal means")
 print("=" * 60)
 print(animal_means.to_string(index=False))
 
@@ -50,13 +50,15 @@ print("=" * 60)
 print(summary.to_string(index=False))
 
 print("\n" + "=" * 60)
-print("Welch's t-test (per-scene values, WT vs KO within each age)")
+print("Welch's t-test (per-animal means, WT vs KO within each age)")
 print("=" * 60)
-for age, grp in data.groupby("Age"):
-    wt = grp.loc[grp["Genotype"] == "WT", "Astrocytes_per_mm2"]
-    ko = grp.loc[grp["Genotype"] == "KO", "Astrocytes_per_mm2"]
+ttest_results = {}
+for age, grp in animal_means.groupby("Age"):
+    wt = grp.loc[grp["Genotype"] == "WT", "Mean_per_mm2"]
+    ko = grp.loc[grp["Genotype"] == "KO", "Mean_per_mm2"]
     t, p = stats.ttest_ind(wt, ko, equal_var=False)
     sig = "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else "ns"
+    ttest_results[age] = p
     print(f"{age}: t = {t:.3f}, p = {p:.4f}  {sig}")
 
 # --- Plot: one subplot per age group ---
@@ -96,9 +98,10 @@ for col, age in enumerate(ages, start=1):
             legendgroup=geno,
         ), row=1, col=col)
 
-    # Add p-value annotation
-    wt_vals = age_data.loc[age_data["Genotype"] == "WT", "Astrocytes_per_mm2"]
-    ko_vals = age_data.loc[age_data["Genotype"] == "KO", "Astrocytes_per_mm2"]
+    # Add p-value annotation (per-animal means t-test)
+    age_am = animal_means[animal_means["Age"] == age]
+    wt_vals = age_am.loc[age_am["Genotype"] == "WT", "Mean_per_mm2"]
+    ko_vals = age_am.loc[age_am["Genotype"] == "KO", "Mean_per_mm2"]
     _, p = stats.ttest_ind(wt_vals, ko_vals, equal_var=False)
     sig = "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else "ns"
     y_max = age_animals["Mean_per_mm2"].max() * 1.25
