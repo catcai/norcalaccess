@@ -11,10 +11,26 @@ FILES = {
 GENOTYPE_MAP = {**{i: "WT" for i in range(1, 7)}, **{i: "KO" for i in range(7, 13)}}
 GENOTYPE_COLORS = {"WT": "#4C72B0", "KO": "#DD8452"}
 
+CUTOFF_6MO = pd.Timestamp("2026-06-18 21:00:00")
+
 def load(age, path):
-    df = pd.read_csv(path, usecols=["Image", "Astrocytes_per_mm2"])
+    cols = ["Image","Annotation","Astrocyte_Count","Annotation_Area_mm2","Astrocytes_per_mm2","Timestamp"]
+    rows = []
+    with open(path) as f:
+        next(f)  # skip header
+        for line in f:
+            parts = line.rstrip("\n").split(",")
+            if len(parts) == 5:
+                parts.append(None)
+            if len(parts) == 6:
+                rows.append(parts)
+    df = pd.DataFrame(rows, columns=cols)
+    df["Astrocytes_per_mm2"] = pd.to_numeric(df["Astrocytes_per_mm2"], errors="coerce")
     df = df.dropna(subset=["Astrocytes_per_mm2"])
     df = df.drop_duplicates()
+    if age.startswith("6mo"):
+        df["Timestamp"] = pd.to_datetime(df["Timestamp"], errors="coerce")
+        df = df[df["Timestamp"] >= CUTOFF_6MO]
     df["Animal"] = df["Image"].str.extract(r"RecognizedCode_(\d+)", expand=False).astype(int)
     df["Genotype"] = df["Animal"].map(GENOTYPE_MAP)
     df["Age"] = age
