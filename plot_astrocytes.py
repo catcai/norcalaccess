@@ -8,8 +8,9 @@ FILES = {
     "11mo (2026-05-29)": "astrocyte_counts_2026_05_29.csv",
 }
 
-GENOTYPE_MAP = {**{i: "WT" for i in range(1, 7)}, **{i: "KO" for i in range(7, 13)}}
-GENOTYPE_COLORS = {"WT": "#4C72B0", "KO": "#DD8452"}
+TRANSGENIC = {2, 3, 6, 9, 10, 12}
+GENOTYPE_MAP = {i: ("Transgenic" if i in TRANSGENIC else "WT") for i in range(1, 13)}
+GENOTYPE_COLORS = {"WT": "#4C72B0", "Transgenic": "#DD8452"}
 
 CUTOFF_6MO = pd.Timestamp("2026-06-18 21:00:00")
 
@@ -46,6 +47,10 @@ animal_means = (
     .rename(columns={"Astrocytes_per_mm2": "Mean_per_mm2"})
 )
 
+# Export per-animal means CSV
+animal_means.round(2).to_csv("astrocyte_per_animal_means.csv", index=False)
+print("Per-animal means saved to astrocyte_per_animal_means.csv\n")
+
 # Summary table
 summary = (
     data.groupby(["Age", "Genotype"])["Astrocytes_per_mm2"]
@@ -71,7 +76,7 @@ print("=" * 60)
 ttest_results = {}
 for age, grp in animal_means.groupby("Age"):
     wt = grp.loc[grp["Genotype"] == "WT", "Mean_per_mm2"]
-    ko = grp.loc[grp["Genotype"] == "KO", "Mean_per_mm2"]
+    ko = grp.loc[grp["Genotype"] == "Transgenic", "Mean_per_mm2"]
     t, p = stats.ttest_ind(wt, ko, equal_var=False)
     sig = "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else "ns"
     ttest_results[age] = p
@@ -85,7 +90,7 @@ for col, age in enumerate(ages, start=1):
     age_data = data[data["Age"] == age]
     age_animals = animal_means[animal_means["Age"] == age]
 
-    for geno in ["WT", "KO"]:
+    for geno in ["WT", "Transgenic"]:
         color = GENOTYPE_COLORS[geno]
         gd = age_animals[age_animals["Genotype"] == geno]
         pts = age_data[age_data["Genotype"] == geno]
@@ -117,7 +122,7 @@ for col, age in enumerate(ages, start=1):
     # Add p-value annotation (per-animal means t-test)
     age_am = animal_means[animal_means["Age"] == age]
     wt_vals = age_am.loc[age_am["Genotype"] == "WT", "Mean_per_mm2"]
-    ko_vals = age_am.loc[age_am["Genotype"] == "KO", "Mean_per_mm2"]
+    ko_vals = age_am.loc[age_am["Genotype"] == "Transgenic", "Mean_per_mm2"]
     _, p = stats.ttest_ind(wt_vals, ko_vals, equal_var=False)
     sig = "***" if p < 0.001 else "**" if p < 0.01 else "*" if p < 0.05 else "ns"
     y_max = age_animals["Mean_per_mm2"].max() * 1.25
