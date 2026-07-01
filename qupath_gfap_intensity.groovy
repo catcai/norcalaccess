@@ -57,7 +57,7 @@ for (annotation in annotations) {
         def server = getCurrentImageData().getServer()
         def roi = annotation.getROI()
         def request = qupath.lib.regions.RegionRequest.createInstance(server.getPath(), 1, roi)
-        def img = qupath.lib.common.GeneralTools.toBufferedImage(server.readRegion(request))
+        def img = server.readRegion(request)
         def channelIdx = server.getMetadata().getChannels().findIndexOf { it.getName() == GFAP_CHANNEL }
         if (channelIdx < 0) {
             print "WARNING: Channel '${GFAP_CHANNEL}' not found. Available channels: " +
