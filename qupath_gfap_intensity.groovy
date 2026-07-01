@@ -54,15 +54,30 @@ for (annotation in annotations) {
     def meanKey = measurements.getMeasurementNames().find { it.contains(GFAP_CHANNEL) && it.toLowerCase().contains("mean") }
 
     if (meanKey == null) {
-        // Run intensity measurements if not present
-        selectObjects(annotation)
-        runPlugin('qupath.lib.algorithms.IntensityFeaturesPlugin',
-            '{"pixelSizeMicrons": 1.0, "region": "ROI", "tileSizeMicrons": 25, ' +
-            '"colorOD": false, "colorStain1": false, "colorStain2": false, "colorStain3": false, ' +
-            '"colorRed": false, "colorGreen": false, "colorBlue": false, ' +
-            '"colorHue": false, "colorSaturation": false, "colorBrightness": false, ' +
-            '"doMean": true, "doStdDev": false, "doMinMax": false, "doMedian": false, "doHaralick": false}')
-        meanKey = measurements.getMeasurementNames().find { it.contains(GFAP_CHANNEL) && it.toLowerCase().contains("mean") }
+        def server = getCurrentImageData().getServer()
+        def roi = annotation.getROI()
+        def request = qupath.lib.regions.RegionRequest.createInstance(server.getPath(), 1, roi)
+        def img = qupath.lib.common.GeneralTools.toBufferedImage(server.readRegion(request))
+        def channelIdx = server.getMetadata().getChannels().findIndexOf { it.getName() == GFAP_CHANNEL }
+        if (channelIdx < 0) {
+            print "WARNING: Channel '${GFAP_CHANNEL}' not found. Available channels: " +
+                server.getMetadata().getChannels().collect { it.getName() }
+        } else {
+            def raster = img.getRaster()
+            double sum = 0
+            int count = 0
+            def geom = roi.getGeometry()
+            for (int y = 0; y < img.getHeight(); y++) {
+                for (int x = 0; x < img.getWidth(); x++) {
+                    sum += raster.getSampleDouble(x, y, channelIdx)
+                    count++
+                }
+            }
+            double mean = count > 0 ? sum / count : Double.NaN
+            annotation.getMeasurementList().putMeasurement("${GFAP_CHANNEL}: Mean", mean)
+            annotation.getMeasurementList().close()
+            meanKey = "${GFAP_CHANNEL}: Mean"
+        }
     }
 
     def meanIntensity = meanKey ? measurements.getMeasurementValue(meanKey) : Double.NaN
