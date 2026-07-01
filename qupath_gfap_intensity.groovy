@@ -26,7 +26,8 @@ def imageName = getProjectEntry().getImageName()
 
 // Skip if this image has already been processed
 if (file.exists()) {
-    def alreadyDone = file.readLines().tail().any { it.startsWith(imageName + ",") }
+    def lines = file.readLines()
+    def alreadyDone = lines.size() > 1 && lines.tail().any { it.startsWith(imageName + ",") }
     if (alreadyDone) {
         print "Skipping ${imageName} — already in CSV."
         writer.close()
