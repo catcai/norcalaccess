@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter
 
 // --- Configuration ---
 def GFAP_CHANNEL = "AF555_112"
+def BACKGROUND_PERCENTILE = 0.05  // bottom 5% of pixels used as background estimate
 
 def project = getProject()
 def outputPath = buildFilePath(PROJECT_BASE_DIR, "gfap_intensity.csv")
@@ -16,7 +17,7 @@ def writeHeader = !file.exists() || file.length() == 0
 def writer = new FileWriter(file, true)
 
 if (writeHeader) {
-    writer.write("Image,Annotation,Mean_GFAP_Intensity,Annotation_Area_mm2,Timestamp\n")
+    writer.write("Image,Annotation,Mean_GFAP_Intensity,Background_Intensity,Mean_GFAP_Corrected,Annotation_Area_mm2,Timestamp\n")
 }
 
 def imageName = getProjectEntry().getImageName()
@@ -56,21 +57,34 @@ for (annotation in annotations) {
     def img = server.readRegion(request)
     def raster = img.getRaster()
 
-    double sum = 0
-    int count = 0
+    // Collect all pixel values
+    List<Double> pixels = []
     for (int y = 0; y < img.getHeight(); y++) {
         for (int x = 0; x < img.getWidth(); x++) {
-            sum += raster.getSampleDouble(x, y, channelIdx)
-            count++
+            pixels << raster.getSampleDouble(x, y, channelIdx)
         }
     }
-    double meanIntensity = count > 0 ? sum / count : Double.NaN
+
+    if (pixels.isEmpty()) {
+        print "  ${annotationName}: no pixels found, skipping"
+        continue
+    }
+
+    Collections.sort(pixels)
+
+    double meanIntensity = pixels.sum() / pixels.size()
+
+    // Background = mean of bottom BACKGROUND_PERCENTILE of pixels
+    int bgCount = Math.max(1, (int)(pixels.size() * BACKGROUND_PERCENTILE))
+    double background = pixels.subList(0, bgCount).sum() / bgCount
+
+    double corrected = meanIntensity - background
 
     def areaMm2 = roi.getArea() * Math.pow(server.getPixelCalibration().getAveragedPixelSizeMicrons() / 1000.0, 2)
     areaMm2 = Math.round(areaMm2 * 10000) / 10000.0
 
-    writer.write("${imageName},${annotationName},${String.format('%.4f', meanIntensity)},${areaMm2},${timestamp}\n")
-    print "  ${annotationName}: mean GFAP = ${String.format('%.4f', meanIntensity)}, area = ${areaMm2} mm²"
+    writer.write("${imageName},${annotationName},${String.format('%.4f', meanIntensity)},${String.format('%.4f', background)},${String.format('%.4f', corrected)},${areaMm2},${timestamp}\n")
+    print "  ${annotationName}: raw = ${String.format('%.4f', meanIntensity)}, background = ${String.format('%.4f', background)}, corrected = ${String.format('%.4f', corrected)}"
 }
 
 writer.close()
