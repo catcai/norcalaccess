@@ -8,7 +8,7 @@ def GFAP_CHANNEL = "AF555_112"
 def BACKGROUND_PERCENTILE = 0.05  // bottom 5% of pixels used as background estimate
 
 def project = getProject()
-def outputPath = buildFilePath(PROJECT_BASE_DIR, "gfap_intensity.csv")
+def outputPath = buildFilePath(PROJECT_BASE_DIR, "gfap_intensity_corrected.csv")
 
 def timestamp = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(LocalDateTime.now())
 def file = new File(outputPath)
