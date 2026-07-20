@@ -36,6 +36,11 @@ int nFeatures = measurementNames.size()
 int nSamples  = trainingDets.size()
 print "Using ${nFeatures} features"
 
+// ── Inspect MeasurementList API ───────────────────────────────────────────────
+def sampleML = trainingDets[0].getMeasurementList()
+print "MeasurementList class: ${sampleML.getClass().getName()}"
+print "MeasurementList methods: ${sampleML.getClass().methods.findAll { it.declaringClass == sampleML.getClass() || it.declaringClass.name.contains('qupath') }.collect { it.name }.unique().sort()}"
+
 // ── Build OpenCV training matrices ────────────────────────────────────────────
 def samples   = new Mat(nSamples, nFeatures, CV_32F)
 def responses = new Mat(nSamples, 1, CV_32S)
