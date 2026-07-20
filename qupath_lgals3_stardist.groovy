@@ -12,7 +12,6 @@ def DETECTION_CHANNEL    = 'AF647_112'  // Lgals3 channel
 def PERCENTILE_LOW       = 1.0          // normalisation floor
 def PERCENTILE_HIGH      = 99.8         // normalisation ceiling — lower if bright cells blow out
 def PROBABILITY_THRESHOLD = 0.35        // lower = more detections, higher = fewer/more confident
-def NMS_OVERLAP           = 0.25        // non-max suppression overlap threshold
 def PIXEL_SIZE_MICRONS    = 0.5         // your image pixel size in µm
 def MIN_AREA_UM2          = 20.0        // exclude very small debris
 def MAX_AREA_UM2          = 800.0       // exclude large merged blobs
@@ -31,7 +30,6 @@ def stardist = StarDist2D.builder(modelPath)
     .channels(DETECTION_CHANNEL)
     .normalizePercentiles(PERCENTILE_LOW, PERCENTILE_HIGH)
     .threshold(PROBABILITY_THRESHOLD)
-    .overlap(NMS_OVERLAP)
     .pixelSize(PIXEL_SIZE_MICRONS)
     .measureShape()
     .measureIntensity()
