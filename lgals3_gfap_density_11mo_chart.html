@@ -1,0 +1,302 @@
+<title>Lgals3+GFAP+ Density — 11mo DG</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px;
+    background: #fcfcfb;
+    color: #1a1a1a;
+    padding: 32px 24px;
+  }
+  h1 { font-size: 16px; font-weight: 600; margin-bottom: 4px; color: #111; }
+  .subtitle { font-size: 12px; color: #666; margin-bottom: 32px; }
+  .chart-wrap { display: inline-block; }
+  .chart-title { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 4px; }
+  .chart-subtitle { font-size: 11px; color: #888; margin-bottom: 12px; }
+  svg.bar-chart { overflow: visible; }
+  .bar { cursor: pointer; transition: opacity 0.1s; }
+  .bar:hover { opacity: 0.8; }
+  .err-cap { stroke-width: 1.5; stroke-linecap: round; }
+  .axis-line { stroke: #ccc; stroke-width: 1; }
+  .grid-line { stroke: #eee; stroke-width: 1; }
+  .tick-label { font-size: 11px; fill: #555; }
+  .axis-label { font-size: 11px; fill: #555; }
+  .p-label { font-size: 11px; fill: #555; font-style: italic; }
+  .sig-line { stroke: #555; stroke-width: 1; }
+  .legend { display: flex; gap: 20px; margin-bottom: 20px; font-size: 12px; color: #444; align-items: center; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+  #tooltip {
+    position: fixed;
+    background: rgba(30,30,30,0.92);
+    color: #fff;
+    padding: 7px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s;
+    z-index: 100;
+    line-height: 1.6;
+    max-width: 180px;
+  }
+  details { margin-top: 36px; }
+  summary { font-size: 12px; color: #555; cursor: pointer; user-select: none; margin-bottom: 8px; }
+  table { border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid #ddd; padding: 5px 10px; text-align: right; }
+  th { background: #f5f5f4; font-weight: 600; text-align: center; }
+  td:first-child { text-align: left; }
+  .ngtg { color: #DD8452; font-weight: 600; }
+  .ngb  { color: #4C72B0; font-weight: 600; }
+</style>
+
+<h1>Lgals3+GFAP+ Cell Density — 11 Month</h1>
+<p class="subtitle">Per-animal means ± SEM &nbsp;|&nbsp; NgTG n=6, NgB n=6 &nbsp;|&nbsp; Welch's two-tailed t-test</p>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:#DD8452"></div><span>NgTG (1–6)</span></div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#4C72B0"></div><span>NgB (7–12)</span></div>
+</div>
+
+<div class="chart-wrap">
+  <div class="chart-title">Lgals3+GFAP+ Density</div>
+  <div class="chart-subtitle">Co-positive cells / mm²</div>
+  <svg id="chart" class="bar-chart" width="300" height="280"></svg>
+</div>
+
+<div id="tooltip"></div>
+
+<details>
+  <summary>Per-animal data table</summary>
+  <table id="data-table"></table>
+</details>
+
+<script>
+// ── per-section data ───────────────────────────────────────────────────────────
+// gfapPos density /mm² = gfapCount / (total / lgals3_density)
+const perSectionDensity = [
+  // Animal 1 NgTG
+  [4.44,6.34,2.85,1.76,10.33,6.51,5.52,4.36,0.0,2.71,1.74,5.02,1.54,3.28],
+  // Animal 2 NgTG
+  [1.83,0.0,0.0,0.0,1.88,0.0,4.6,0.0,5.65,0.0,1.17,2.24],
+  // Animal 3 NgTG
+  [0.0,1.25,2.71,3.76,5.45,2.17,3.36,3.17,1.45,5.16,5.04,3.26,4.44],
+  // Animal 4 NgTG
+  [8.05,2.72,3.77,1.39,12.43,7.35,10.26,5.95,1.74,3.23,1.69,1.63,3.51,4.81,3.3],
+  // Animal 5 NgTG
+  [4.75,1.94,3.87,2.0,5.03,7.16,3.64,5.46,6.11,9.42,3.14,3.62,3.22,4.81,4.79,4.7,3.07,4.81],
+  // Animal 6 NgTG
+  [6.08,2.2,8.37,5.26,2.75,6.32,1.96,3.52,1.65,5.58,1.69,5.14,2.1,1.76,7.02,6.39,3.51,4.36],
+  // Animal 7 NgB
+  [0.0,3.2,1.7,0.0,1.59,1.54,0.0,4.51,1.51,5.23,2.95,1.23,0.0,0.0,1.91],
+  // Animal 8 NgB
+  [9.03,6.89,6.06,8.56,15.2,10.12,8.55,9.33,8.93,8.96,4.54,2.21],
+  // Animal 9 NgB
+  [4.69,11.32,1.39,5.89,4.22,10.49,6.94,6.25,7.55,6.23,2.93,4.49,0.0,1.51],
+  // Animal 10 NgB
+  [7.24,0.0,2.43,3.93,0.0,10.44,1.95,0.0,0.0,4.07,4.28],
+  // Animal 11 NgB
+  [2.87,7.32,6.74,4.52,1.47,7.25,4.62,6.48,5.57,7.84,5.12,5.52,7.11,7.2],
+  // Animal 12 NgB
+  [5.33,7.53,12.89,5.66,3.68,6.06,10.99],
+];
+
+const groups = ['NgTG','NgTG','NgTG','NgTG','NgTG','NgTG','NgB','NgB','NgB','NgB','NgB','NgB'];
+const COLORS = { NgTG:'#DD8452', NgB:'#4C72B0' };
+
+const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+const variance = arr => { const m=mean(arr); return arr.reduce((s,x)=>s+(x-m)**2,0)/(arr.length-1); };
+const sem = arr => Math.sqrt(variance(arr)/arr.length);
+
+function welch(a, b) {
+  const ma=mean(a), mb=mean(b), va=variance(a), vb=variance(b), na=a.length, nb=b.length;
+  const se = Math.sqrt(va/na + vb/nb);
+  const t = (ma-mb)/se;
+  const df = (va/na+vb/nb)**2 / ((va/na)**2/(na-1) + (vb/nb)**2/(nb-1));
+  // two-tailed p via incomplete beta
+  const x = df/(df+t*t);
+  const p = regularizedIncompleteBeta(df/2, 0.5, x);
+  return { t, df, p };
+}
+
+function regularizedIncompleteBeta(a, b, x) {
+  if (x < 0 || x > 1) return NaN;
+  if (x === 0) return 0;
+  if (x === 1) return 1;
+  const lbeta = lgamma(a) + lgamma(b) - lgamma(a+b);
+  const bt = Math.exp(Math.log(x)*a + Math.log(1-x)*b - lbeta);
+  if (x < (a+1)/(a+b+2)) return bt * betacf(a,b,x) / a;
+  return 1 - bt * betacf(b,a,1-x) / b;
+}
+function betacf(a,b,x){
+  const MAXIT=200, EPS=3e-7, FPMIN=1e-30;
+  const qab=a+b, qap=a+1, qam=a-1;
+  let c=1, d=1-qab*x/qap; if(Math.abs(d)<FPMIN) d=FPMIN; d=1/d;
+  let h=d;
+  for(let m=1;m<=MAXIT;m++){
+    let m2=2*m;
+    let aa=m*(b-m)*x/((qam+m2)*(a+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN) d=FPMIN; c=1+aa/c; if(Math.abs(c)<FPMIN) c=FPMIN;
+    d=1/d; h*=d*c;
+    aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN) d=FPMIN; c=1+aa/c; if(Math.abs(c)<FPMIN) c=FPMIN;
+    d=1/d; let del=d*c; h*=del;
+    if(Math.abs(del-1)<EPS) break;
+  }
+  return h;
+}
+function lgamma(x){
+  const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  let y=x, tmp=x+5.5; tmp-=(x+0.5)*Math.log(tmp);
+  let ser=1.000000000190015;
+  for(let j=0;j<6;j++) ser+=c[j]/++y;
+  return -tmp+Math.log(2.5066282746310005*ser/x);
+}
+
+function pLabel(p) {
+  if (p < 0.001) return 'p < 0.001';
+  if (p < 0.01)  return `p = ${p.toFixed(3)}`;
+  if (p < 0.05)  return `p = ${p.toFixed(3)}`;
+  return `ns (p = ${p.toFixed(2)})`;
+}
+
+// ── per-animal summaries ───────────────────────────────────────────────────────
+const perAnimal = perSectionDensity.map((sections, i) => ({
+  id: i+1,
+  grp: groups[i],
+  mean: mean(sections),
+  sem: sem(sections),
+  n: sections.length,
+}));
+
+const ngtg = perAnimal.filter(d=>d.grp==='NgTG');
+const ngb  = perAnimal.filter(d=>d.grp==='NgB');
+
+const vals = { NgTG: ngtg.map(d=>d.mean), NgB: ngb.map(d=>d.mean) };
+const groupMeans = { NgTG: mean(vals.NgTG), NgB: mean(vals.NgB) };
+const groupSEM   = { NgTG: sem(vals.NgTG),  NgB: sem(vals.NgB) };
+const { t, df, p } = welch(vals.NgTG, vals.NgB);
+
+// ── draw chart ────────────────────────────────────────────────────────────────
+const W=300, H=280, ml=52, mr=20, mt=24, mb=48;
+const cw=W-ml-mr, ch=H-mt-mb;
+
+const allVals = [...vals.NgTG, ...vals.NgB];
+const maxY = Math.max(...allVals.map((v,i)=>{
+  const g = i<6?'NgTG':'NgB';
+  return groupMeans[g]+groupSEM[g];
+}), groupMeans.NgTG+groupSEM.NgTG, groupMeans.NgB+groupSEM.NgB) * 1.35;
+
+const y = v => mt + ch * (1 - v/maxY);
+const nTicks = 5;
+const tickStep = maxY/nTicks;
+
+const x1 = ml + cw*0.28, x2 = ml + cw*0.72;
+const bw = 52;
+
+const svg = document.getElementById('chart');
+
+// grid + y axis
+for (let i=0; i<=nTicks; i++) {
+  const val = tickStep*i;
+  const yy = y(val);
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.setAttribute('x1',ml); line.setAttribute('x2',ml+cw);
+  line.setAttribute('y1',yy); line.setAttribute('y2',yy);
+  line.setAttribute('class', i===0 ? 'axis-line' : 'grid-line');
+  svg.appendChild(line);
+  if (i>0) {
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('x',ml-5); lbl.setAttribute('y',yy+4);
+    lbl.setAttribute('text-anchor','end'); lbl.setAttribute('class','tick-label');
+    lbl.textContent = val.toFixed(1);
+    svg.appendChild(lbl);
+  }
+}
+
+// y-axis label
+const axlbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+axlbl.setAttribute('transform',`translate(12,${mt+ch/2}) rotate(-90)`);
+axlbl.setAttribute('text-anchor','middle'); axlbl.setAttribute('class','axis-label');
+axlbl.textContent = 'Cells / mm²';
+svg.appendChild(axlbl);
+
+// bars + error bars + jitter
+[['NgTG',x1],['NgB',x2]].forEach(([grp,cx]) => {
+  const gm = groupMeans[grp], gs = groupSEM[grp];
+  const col = COLORS[grp];
+
+  const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  rect.setAttribute('x', cx-bw/2); rect.setAttribute('width', bw);
+  rect.setAttribute('y', y(gm)); rect.setAttribute('height', Math.max(0, y(0)-y(gm)));
+  rect.setAttribute('fill', col); rect.setAttribute('opacity','0.82');
+  rect.setAttribute('class','bar');
+  rect.setAttribute('rx','2');
+  svg.appendChild(rect);
+
+  // error bar
+  const errTop=y(gm+gs), errBot=y(Math.max(0,gm-gs));
+  [[cx,errTop,cx,errBot],[cx-6,errTop,cx+6,errTop],[cx-6,errBot,cx+6,errBot]].forEach(([x1e,y1e,x2e,y2e])=>{
+    const el=document.createElementNS('http://www.w3.org/2000/svg','line');
+    el.setAttribute('x1',x1e);el.setAttribute('y1',y1e);el.setAttribute('x2',x2e);el.setAttribute('y2',y2e);
+    el.setAttribute('stroke','#333'); el.setAttribute('class','err-cap');
+    svg.appendChild(el);
+  });
+
+  // jitter dots
+  const animals = grp==='NgTG'?ngtg:ngb;
+  animals.forEach((a,i) => {
+    const jx = cx - 14 + (i % 3)*14 + (Math.floor(i/3)%2)*7;
+    const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx', jx); dot.setAttribute('cy', y(a.mean));
+    dot.setAttribute('r','3'); dot.setAttribute('fill','#fff');
+    dot.setAttribute('stroke', col); dot.setAttribute('stroke-width','1.5');
+    dot.setAttribute('class','bar');
+    dot.addEventListener('mouseenter', e=>{
+      const tip = document.getElementById('tooltip');
+      tip.innerHTML = `Animal ${a.id} (${grp})<br>Mean: ${a.mean.toFixed(2)} /mm²<br>SEM: ±${a.sem.toFixed(2)}<br>n=${a.n} sections`;
+      tip.style.opacity=1; tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-8)+'px';
+    });
+    dot.addEventListener('mousemove', e=>{
+      const tip=document.getElementById('tooltip');
+      tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-8)+'px';
+    });
+    dot.addEventListener('mouseleave',()=>{ document.getElementById('tooltip').style.opacity=0; });
+    svg.appendChild(dot);
+  });
+
+  // x label
+  const xl = document.createElementNS('http://www.w3.org/2000/svg','text');
+  xl.setAttribute('x',cx); xl.setAttribute('y', mt+ch+16);
+  xl.setAttribute('text-anchor','middle'); xl.setAttribute('class','tick-label');
+  xl.setAttribute('font-weight','600'); xl.setAttribute('fill', col);
+  xl.textContent = grp;
+  svg.appendChild(xl);
+});
+
+// significance bracket
+const bracketY = y(Math.max(groupMeans.NgTG+groupSEM.NgTG, groupMeans.NgB+groupSEM.NgB)) - 14;
+[[x1,bracketY,x1,bracketY-5],[x1,bracketY-5,x2,bracketY-5],[x2,bracketY-5,x2,bracketY]].forEach(([ax,ay,bx,by])=>{
+  const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+  l.setAttribute('x1',ax);l.setAttribute('y1',ay);l.setAttribute('x2',bx);l.setAttribute('y2',by);
+  l.setAttribute('class','sig-line'); svg.appendChild(l);
+});
+const plbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+plbl.setAttribute('x',(x1+x2)/2); plbl.setAttribute('y', bracketY-8);
+plbl.setAttribute('text-anchor','middle'); plbl.setAttribute('class','p-label');
+plbl.textContent = pLabel(p);
+svg.appendChild(plbl);
+
+// ── data table ────────────────────────────────────────────────────────────────
+const tbl = document.getElementById('data-table');
+tbl.innerHTML = `<tr><th>Animal</th><th>Group</th><th>Mean /mm²</th><th>SEM</th><th>n sections</th></tr>`;
+perAnimal.forEach(a => {
+  const cls = a.grp==='NgTG'?'ngtg':'ngb';
+  tbl.innerHTML += `<tr><td>${a.id}</td><td class="${cls}">${a.grp}</td><td>${a.mean.toFixed(2)}</td><td>${a.sem.toFixed(2)}</td><td>${a.n}</td></tr>`;
+});
+tbl.innerHTML += `<tr><td colspan="5" style="text-align:left;padding-top:8px;color:#555">
+  NgTG mean=${groupMeans.NgTG.toFixed(2)}, SEM=${groupSEM.NgTG.toFixed(2)} &nbsp;|&nbsp;
+  NgB mean=${groupMeans.NgB.toFixed(2)}, SEM=${groupSEM.NgB.toFixed(2)} &nbsp;|&nbsp;
+  ${pLabel(p)}, t(${df.toFixed(1)})=${t.toFixed(3)}
+</td></tr>`;
+</script>
