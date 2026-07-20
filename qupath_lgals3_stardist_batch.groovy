@@ -3,7 +3,7 @@
 
 import qupath.ext.stardist.StarDist2D
 import qupath.lib.objects.classes.PathClass
-import groovy.json.JsonSlurper
+import qupath.lib.classifiers.object.ObjectClassifiers
 
 def modelPath      = "/Volumes/Webb Lab/Kelsey_paper revisions/GFAP/Scenes seperated/6 mo gfap/maxprojectedtiffs/scripts/dsb2018_heavy_augment.pb"
 def classifierPath = "/Volumes/Webb Lab/Kelsey_paper revisions/GFAP/Lgals3Results/lgals3_classifier.json"
@@ -18,16 +18,18 @@ def PIXEL_SIZE_MICRONS    = 0.5
 def MIN_AREA_UM2          = 20.0
 def MAX_AREA_UM2          = 1200.0
 
-// ── Load classifier parameters ────────────────────────────────────────────────
+// ── Load classifier ───────────────────────────────────────────────────────────
 def classifierFile = new File(classifierPath)
 if (!classifierFile.exists()) {
     print "ERROR: Classifier not found at ${classifierPath} — run qupath_lgals3_train_classifier.groovy first"
     return
 }
-def params = new JsonSlurper().parse(classifierFile)
-def INTENSITY_KEY       = params.intensity_key
-def INTENSITY_THRESHOLD = params.intensity_threshold as double
-print "Loaded classifier: intensity key=${INTENSITY_KEY}, threshold=${String.format('%.0f', INTENSITY_THRESHOLD)}"
+def classifier = ObjectClassifiers.readClassifier(classifierFile)
+if (classifier == null) {
+    print "ERROR: Failed to load classifier from ${classifierPath}"
+    return
+}
+print "Loaded classifier from ${classifierPath}"
 
 // ── Output setup ──────────────────────────────────────────────────────────────
 def outDir = new File(outputDir)
@@ -80,20 +82,20 @@ annotations.each { annotation ->
         annotation.getROI().contains(det.getROI().getCentroidX(), det.getROI().getCentroidY())
     }
 
-    def positiveDets = allDets.findAll { det ->
+    // Area filter
+    def sizeFiltered = allDets.findAll { det ->
         double areaUm2 = det.getROI().getArea() * cal.getPixelWidthMicrons() * cal.getPixelHeightMicrons()
-        if (areaUm2 < MIN_AREA_UM2 || areaUm2 > MAX_AREA_UM2) return false
-        def intensity = det.getMeasurementList().getMeasurementValue(INTENSITY_KEY)
-        return intensity != null && !intensity.isNaN() && intensity >= INTENSITY_THRESHOLD
+        areaUm2 >= MIN_AREA_UM2 && areaUm2 <= MAX_AREA_UM2
     }
-
-    // Label detections for visual review
-    def lgals3Class  = PathClass.fromString("Lgals3")
-    def negativeClass = PathClass.fromString("Negative")
-    allDets.each { det ->
-        det.setPathClass(positiveDets.contains(det) ? lgals3Class : negativeClass)
-    }
+    removeObjects(allDets - sizeFiltered, false)
     fireHierarchyUpdate()
+
+    // Apply classifier
+    classifier.classifyObjects(imageData, sizeFiltered, true)
+    fireHierarchyUpdate()
+
+    def lgals3Class = PathClass.fromString("Lgals3")
+    def positiveDets = sizeFiltered.findAll { det -> det.getPathClass() == lgals3Class }
 
     def count  = positiveDets.size()
     def areaPx = annotation.getROI().getArea()
