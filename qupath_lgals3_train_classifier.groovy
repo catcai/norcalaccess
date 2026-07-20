@@ -48,7 +48,7 @@ def responses = new Mat(nSamples, 1, CV_32S)
 trainingDets.eachWithIndex { det, i ->
     def ml = det.getMeasurementList()
     measurementNames.eachWithIndex { name, j ->
-        double val = ml.getMeasurementValue(j)
+        double val = ml.getByIndex(j)
         float fval = (Double.isNaN(val)) ? 0f : (float)val
         samples.ptr(i, j).putFloat(fval)
     }
