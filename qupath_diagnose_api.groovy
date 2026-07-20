@@ -23,4 +23,10 @@ FeatureExtractors.class.methods
     .sort { it.name }
     .each { println "  ${it.name}(${it.parameterTypes*.simpleName.join(', ')})" }
 
+println "\n=== OpenCVMLClassifier instance methods ==="
+OpenCVMLClassifier.class.methods
+    .findAll { it.declaringClass == OpenCVMLClassifier.class || it.declaringClass.name.contains("qupath") }
+    .sort { it.name }
+    .each { println "  ${it.name}(${it.parameterTypes*.simpleName.join(', ')})" }
+
 println "\nDone — paste this output to get the correct API calls"
