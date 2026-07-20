@@ -43,8 +43,8 @@ def responses = new Mat(nSamples, 1, CV_32S)
 trainingDets.eachWithIndex { det, i ->
     def ml = det.getMeasurementList()
     measurementNames.eachWithIndex { name, j ->
-        def val = ml.getMeasurementValue(name)
-        float fval = (val == null || val.isNaN()) ? 0f : val.floatValue()
+        double val = ml.getMeasurementValue(j)
+        float fval = (Double.isNaN(val)) ? 0f : (float)val
         samples.ptr(i, j).putFloat(fval)
     }
     int classIdx = (det.getPathClass() == lgals3Class) ? 1 : 0
