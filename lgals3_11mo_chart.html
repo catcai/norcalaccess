@@ -1,0 +1,481 @@
+<title>Lgals3 Analysis — 11mo DG</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px;
+    background: #fcfcfb;
+    color: #1a1a1a;
+    padding: 32px 24px;
+  }
+  h1 { font-size: 16px; font-weight: 600; margin-bottom: 4px; color: #111; }
+  .subtitle { font-size: 12px; color: #666; margin-bottom: 32px; }
+  .charts-row {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .chart-wrap {
+    flex: 1 1 240px;
+    max-width: 320px;
+  }
+  .chart-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+  }
+  .chart-subtitle {
+    font-size: 11px;
+    color: #888;
+    margin-bottom: 12px;
+  }
+  svg.bar-chart { overflow: visible; }
+  .bar { cursor: pointer; transition: opacity 0.1s; }
+  .bar:hover { opacity: 0.8; }
+  .err-cap { stroke-width: 1.5; stroke-linecap: round; }
+  .axis-line { stroke: #ccc; stroke-width: 1; }
+  .grid-line { stroke: #eee; stroke-width: 1; }
+  .tick-label { font-size: 11px; fill: #555; }
+  .axis-label { font-size: 11px; fill: #555; }
+  .p-label { font-size: 11px; fill: #555; font-style: italic; }
+  .sig-line { stroke: #555; stroke-width: 1; }
+
+  /* legend */
+  .legend {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+    font-size: 12px;
+    color: #444;
+    align-items: center;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch {
+    width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0;
+  }
+
+  /* tooltip */
+  #tooltip {
+    position: fixed;
+    background: rgba(30,30,30,0.92);
+    color: #fff;
+    padding: 7px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s;
+    z-index: 100;
+    line-height: 1.6;
+    max-width: 180px;
+  }
+
+  /* data table */
+  details { margin-top: 36px; }
+  summary {
+    font-size: 12px; color: #555; cursor: pointer; user-select: none;
+    margin-bottom: 8px;
+  }
+  table {
+    border-collapse: collapse;
+    font-size: 12px;
+    width: 100%;
+    max-width: 720px;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 5px 10px;
+    text-align: right;
+  }
+  th { background: #f5f5f3; font-weight: 600; text-align: center; }
+  td:first-child, th:first-child { text-align: left; }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1a1e; color: #e8e8e8; }
+    .chart-title { color: #e0e0e0; }
+    .chart-subtitle { color: #888; }
+    .subtitle { color: #888; }
+    .tick-label { fill: #aaa; }
+    .axis-label { fill: #aaa; }
+    .p-label { fill: #aaa; }
+    .axis-line { stroke: #444; }
+    .grid-line { stroke: #2e2e35; }
+    .sig-line { stroke: #aaa; }
+    .legend { color: #ccc; }
+    #tooltip { background: rgba(240,240,240,0.95); color: #111; }
+    summary { color: #aaa; }
+    th { background: #252530; }
+    th, td { border-color: #333; }
+  }
+  :root[data-theme="dark"] {
+    body { background: #1a1a1e; color: #e8e8e8; }
+    .chart-title { color: #e0e0e0; }
+    .tick-label { fill: #aaa; }
+    .axis-label { fill: #aaa; }
+    .p-label { fill: #aaa; }
+    .axis-line { stroke: #444; }
+    .grid-line { stroke: #2e2e35; }
+    .sig-line { stroke: #aaa; }
+    .legend { color: #ccc; }
+    th { background: #252530; }
+    th, td { border-color: #333; }
+  }
+</style>
+
+<div id="tooltip"></div>
+
+<h1>Lgals3 Analysis — 11-month DG</h1>
+<p class="subtitle">Per-animal means ± SEM &nbsp;|&nbsp; NgTG n=6, NgB n=6 &nbsp;|&nbsp; Welch's two-tailed t-test</p>
+
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:#DD8452"></div>
+    <span>NgTG (1–6)</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-swatch" style="background:#4C72B0"></div>
+    <span>NgB (7–12)</span>
+  </div>
+</div>
+
+<div class="charts-row" id="charts"></div>
+
+<details>
+  <summary>Per-animal data table</summary>
+  <table id="data-table"></table>
+</details>
+
+<script>
+// ── data ──────────────────────────────────────────────────────────────────────
+const animals = [
+  // id, group, total, density, gfapPos
+  { id:1,  grp:'NgTG', total:[121,101,118,56,64,64,63,111,159,56,39,504,44,79] },
+  { id:2,  grp:'NgTG', total:[119,92,33,57,88,54,60,126,128,115,10,109] },
+  { id:3,  grp:'NgTG', total:[51,43,71,95,147,48,50,45,44,66,98,56,165] },
+  { id:4,  grp:'NgTG', total:[39,45,34,75,82,86,92,54,76,55,48,50,102,93,227] },
+  { id:5,  grp:'NgTG', total:[77,53,85,36,26,40,62,99,61,88,78,109,120,96,116,89,70,65] },
+  { id:6,  grp:'NgTG', total:[32,29,70,67,35,76,30,59,50,66,54,52,46,33,27,90,42,45] },
+  { id:7,  grp:'NgB',  total:[4,67,65,7,32,34,12,57,16,60,92,47,21,67,16] },
+  { id:8,  grp:'NgB',  total:[97,105,101,107,98,126,108,78,82,75,93,57] },
+  { id:9,  grp:'NgB',  total:[138,212,22,79,97,153,95,92,83,68,94,48,12,48] },
+  { id:10, grp:'NgB',  total:[48,27,15,79,39,99,58,2,10,40,72] },
+  { id:11, grp:'NgB',  total:[123,111,85,69,126,114,127,111,73,73,119,162,163,98] },
+  { id:12, grp:'NgB',  total:[109,133,136,92,97,111,107] },
+];
+
+const densities = [
+  [179.11,128.16,167.98,98.40,132.25,138.96,86.99,161.16,246.13,75.96,68.01,168.62,33.91,129.41],
+  [218.28,231.65,74.38,177.86,165.82,147.20,138.05,154.29,180.75,278.39,11.74,61.13],
+  [67.27,53.59,96.30,178.42,200.34,104.29,84.06,142.47,63.88,113.41,123.41,91.39,121.97],
+  [104.68,122.52,64.01,104.12,169.93,126.43,134.78,107.08,132.61,88.92,81.35,81.59,71.62,149.09,93.58],
+  [121.92,102.70,109.70,72.01,65.40,95.47,112.84,90.09,124.21,138.20,81.55,131.45,96.54,153.87,139.04,104.62,107.32,104.12],
+  [53.38,63.36,173.56,110.43,71.13,91.08,90.60,74.83,75.61,82.10,66.56,61.79,81.66,48.21,52.82,239.43,69.91,76.45],
+  [10.20,98.49,126.51,9.66,54.69,46.11,17.32,106.79,34.93,114.88,169.81,54.72,20.50,107.46,13.30],
+  [158.23,165.77,150.06,147.70,122.81,178.30,182.10,152.97,138.60,133.97,128.35,95.72],
+  [212.36,277.27,44.20,152.06,145.46,201.67,136.94,186.85,162.38,140.48,167.04,117.60,10.28,62.97],
+  [68.61,41.83,31.29,104.07,60.95,148.52,108.85,3.09,22.80,75.34,99.31],
+  [159.56,170.80,168.29,159.77,162.62,163.67,285.03,196.15,140.61,139.61,108.58,157.56,306.28,115.00],
+  [143.90,207.61,251.36,177.20,205.91,219.86,183.52],
+];
+
+const gfapPos = [
+  [3,5,2,1,5,3,4,3,0,2,1,15,2,2],
+  [1,0,0,0,1,0,2,0,4,0,1,4],
+  [0,1,2,2,4,1,2,1,1,3,4,2,6],
+  [3,1,2,1,6,5,7,3,1,2,1,1,5,3,8],
+  [3,1,3,1,2,3,2,6,3,6,3,3,4,3,4,4,2,3],
+  [3,1,4,3,1,3,1,2,1,3,1,3,1,1,3,4,2,2],
+  [0,2,1,0,1,1,0,3,1,3,2,1,0,0,1],
+  [4,3,3,4,7,5,4,4,4,4,2,1],
+  [3,8,1,4,3,7,5,4,5,4,2,3,0,1],
+  [3,0,1,2,0,5,1,0,0,2,2],
+  [2,5,4,3,1,5,3,4,4,5,4,4,5,5],
+  [3,4,7,3,2,3,6],
+];
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+const mean = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+const variance = arr => { const m=mean(arr); return arr.reduce((s,x)=>s+(x-m)**2,0)/(arr.length-1); };
+const sem = arr => Math.sqrt(variance(arr)/arr.length);
+
+function welch(a, b) {
+  const ma=mean(a), mb=mean(b), va=variance(a), vb=variance(b), na=a.length, nb=b.length;
+  const se = Math.sqrt(va/na + vb/nb);
+  const t = (ma-mb)/se;
+  const df = (va/na+vb/nb)**2 / ((va/na)**2/(na-1) + (vb/nb)**2/(nb-1));
+  // two-tailed p via regularized incomplete beta
+  const x = df/(df+t*t);
+  const p = ibeta(df/2, 0.5, x);
+  return { t, df, p };
+}
+
+// regularized incomplete beta (continued fraction)
+function ibeta(a, b, x) {
+  if (x < 0 || x > 1) return NaN;
+  if (x === 0) return 0;
+  if (x === 1) return 1;
+  const lbeta = lgamma(a) + lgamma(b) - lgamma(a+b);
+  const front = Math.exp(Math.log(x)*a + Math.log(1-x)*b - lbeta) / a;
+  return front * cf(a, b, x);
+}
+function cf(a, b, x) {
+  // Lentz continued fraction
+  const MAXIT=200, EPS=3e-7, FPMIN=1e-30;
+  let qab=a+b, qap=a+1, qam=a-1;
+  let c=1, d=1-qab*x/qap; if(Math.abs(d)<FPMIN)d=FPMIN; d=1/d;
+  let h=d;
+  for(let m=1;m<=MAXIT;m++){
+    let m2=2*m;
+    let aa=m*(b-m)*x/((qam+m2)*(a+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN;
+    c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN;
+    d=1/d; h*=d*c;
+    aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+    d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN;
+    c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN;
+    d=1/d; let del=d*c; h*=del;
+    if(Math.abs(del-1)<EPS)break;
+  }
+  return h;
+}
+function lgamma(x) {
+  const c=[76.18009172947146,-86.50532032941677,24.01409824083091,
+           -1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  let y=x, tmp=x+5.5; tmp-=(x+0.5)*Math.log(tmp);
+  let ser=1.000000000190015;
+  for(let j=0;j<6;j++) ser+=c[j]/++y;
+  return -tmp+Math.log(2.5066282746310005*ser/x);
+}
+
+function pLabel(p) {
+  if(p < 0.001) return 'p < 0.001 ***';
+  if(p < 0.01)  return `p = ${p.toFixed(3)} **`;
+  if(p < 0.05)  return `p = ${p.toFixed(3)} *`;
+  return `p = ${p.toFixed(2)} ns`;
+}
+
+// ── build per-animal summaries ────────────────────────────────────────────────
+const perAnimal = animals.map((a,i) => ({
+  id: a.id,
+  grp: a.grp,
+  total: mean(a.total),
+  density: mean(densities[i]),
+  gfapPos: mean(gfapPos[i]),
+  n: a.total.length,
+}));
+
+const ngtg = perAnimal.filter(d=>d.grp==='NgTG');
+const ngb  = perAnimal.filter(d=>d.grp==='NgB');
+
+const metrics = [
+  { key:'total',   title:'Total Lgals3+ Cells', yLabel:'Cells per section', unit:'' },
+  { key:'density', title:'Lgals3+ Cell Density', yLabel:'Cells / mm²', unit:' /mm²' },
+  { key:'gfapPos', title:'Lgals3+GFAP+ Cells', yLabel:'Co-positive cells', unit:'' },
+];
+
+// ── tooltip ───────────────────────────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+function showTip(html, e) {
+  tooltip.innerHTML = html;
+  tooltip.style.opacity = 1;
+  moveTip(e);
+}
+function moveTip(e) {
+  let x = e.clientX+14, y = e.clientY-10;
+  if(x+200 > window.innerWidth) x = e.clientX - 190;
+  tooltip.style.left = x+'px';
+  tooltip.style.top = y+'px';
+}
+function hideTip() { tooltip.style.opacity=0; }
+document.addEventListener('mousemove', e => { if(tooltip.style.opacity==='1') moveTip(e); });
+
+// ── render charts ─────────────────────────────────────────────────────────────
+const W=260, H=220, ML=52, MR=16, MT=28, MB=44;
+const PW=W-ML-MR, PH=H-MT-MB;
+const COLORS = { NgTG:'#DD8452', NgB:'#4C72B0' };
+const GROUPS = ['NgTG','NgB'];
+const BAR_W = 60, GAP = 40;
+
+const container = document.getElementById('charts');
+
+metrics.forEach(metric => {
+  const vals = {
+    NgTG: ngtg.map(d=>d[metric.key]),
+    NgB:  ngb.map(d=>d[metric.key]),
+  };
+  const groupMeans = { NgTG: mean(vals.NgTG), NgB: mean(vals.NgB) };
+  const groupSEM   = { NgTG: sem(vals.NgTG),  NgB: sem(vals.NgB) };
+  const { t, df, p } = welch(vals.NgTG, vals.NgB);
+
+  const allVals = [...vals.NgTG, ...vals.NgB];
+  const maxVal = Math.max(...allVals.map((v,i)=>{
+    const g = i<6?'NgTG':'NgB';
+    return groupMeans[g] + groupSEM[g];
+  }), groupMeans.NgTG+groupSEM.NgTG, groupMeans.NgB+groupSEM.NgB);
+
+  const yMax = maxVal * 1.30;
+  const y = v => PH - (v/yMax)*PH;
+
+  // nice ticks
+  function niceTicks(max, n=5) {
+    const raw = max/n;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const norm = raw/mag;
+    const nice = norm<1.5?1:norm<3?2:norm<7?5:10;
+    const step = nice*mag;
+    const ticks=[];
+    for(let v=0;v<=max+step*0.01;v+=step) ticks.push(parseFloat(v.toFixed(10)));
+    return ticks;
+  }
+  const ticks = niceTicks(yMax, 4);
+
+  const x1 = PW/2 - GAP/2 - BAR_W/2;
+  const x2 = PW/2 + GAP/2 + BAR_W/2;
+  const xs = { NgTG: x1, NgB: x2 };
+
+  // sig bracket height
+  const topY = Math.min(y(groupMeans.NgTG+groupSEM.NgTG), y(groupMeans.NgB+groupSEM.NgB)) - 14;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'chart-wrap';
+
+  const titleEl = document.createElement('div');
+  titleEl.className = 'chart-title';
+  titleEl.textContent = metric.title;
+
+  const subEl = document.createElement('div');
+  subEl.className = 'chart-subtitle';
+  subEl.textContent = metric.yLabel;
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.className='bar-chart';
+
+  let html = `<g transform="translate(${ML},${MT})">`;
+
+  // grid lines
+  ticks.forEach(tv => {
+    const yv = y(tv);
+    if(yv < 0 || yv > PH+1) return;
+    html += `<line class="grid-line" x1="0" y1="${yv}" x2="${PW}" y2="${yv}"/>`;
+    html += `<text class="tick-label" x="-6" y="${yv+4}" text-anchor="end">${tv % 1 === 0 ? tv : tv.toFixed(1)}</text>`;
+  });
+
+  // axis
+  html += `<line class="axis-line" x1="0" y1="${PH}" x2="${PW}" y2="${PH}"/>`;
+  html += `<line class="axis-line" x1="0" y1="0" x2="0" y2="${PH}"/>`;
+
+  // bars + error bars
+  GROUPS.forEach(grp => {
+    const mx = xs[grp];
+    const my = groupMeans[grp];
+    const se = groupSEM[grp];
+    const bx = mx - BAR_W/2;
+    const bh = (my/yMax)*PH;
+    const by = PH - bh;
+    const color = COLORS[grp];
+
+    // individual jittered points
+    const pts = vals[grp];
+    const jitterW = 16;
+    pts.forEach((v,i) => {
+      const jitter = (i/(pts.length-1||1) - 0.5)*jitterW;
+      const px = mx + jitter;
+      const py = y(v);
+      html += `<circle cx="${px}" cy="${py}" r="3" fill="${color}" opacity="0.35" stroke="${color}" stroke-width="0.5"/>`;
+    });
+
+    // bar
+    html += `<rect class="bar" x="${bx}" y="${by}" width="${BAR_W}" height="${bh}"
+      fill="${color}" rx="2" ry="2" data-grp="${grp}" data-mean="${my.toFixed(2)}" data-sem="${se.toFixed(2)}" data-n="6"/>`;
+
+    // error bars
+    const ey1 = y(my+se), ey2 = y(my-se);
+    html += `<line class="err-cap" x1="${mx}" y1="${ey1}" x2="${mx}" y2="${ey2}" stroke="${color}"/>`;
+    html += `<line class="err-cap" x1="${mx-5}" y1="${ey1}" x2="${mx+5}" y2="${ey1}" stroke="${color}"/>`;
+    html += `<line class="err-cap" x1="${mx-5}" y1="${ey2}" x2="${mx+5}" y2="${ey2}" stroke="${color}"/>`;
+
+    // group label
+    html += `<text class="tick-label" x="${mx}" y="${PH+16}" text-anchor="middle">${grp}</text>`;
+  });
+
+  // significance bracket
+  const bx1 = xs.NgTG, bx2 = xs.NgB;
+  const bracketY = Math.max(8, topY - 4);
+  html += `<line class="sig-line" x1="${bx1}" y1="${bracketY+8}" x2="${bx1}" y2="${bracketY}"/>`;
+  html += `<line class="sig-line" x1="${bx1}" y1="${bracketY}" x2="${bx2}" y2="${bracketY}"/>`;
+  html += `<line class="sig-line" x1="${bx2}" y1="${bracketY}" x2="${bx2}" y2="${bracketY+8}"/>`;
+  html += `<text class="p-label" x="${(bx1+bx2)/2}" y="${bracketY-4}" text-anchor="middle">${pLabel(p)}</text>`;
+
+  html += `</g>`;
+  svg.innerHTML = html;
+
+  // tooltips on bars
+  svg.querySelectorAll('.bar').forEach(bar => {
+    bar.addEventListener('mouseenter', e => {
+      const g = bar.dataset.grp;
+      const m = parseFloat(bar.dataset.mean);
+      const s = parseFloat(bar.dataset.sem);
+      showTip(`<strong>${g}</strong><br>Mean: ${m.toFixed(2)}${metric.unit}<br>SEM: ±${s.toFixed(2)}<br>n = 6 animals`, e);
+    });
+    bar.addEventListener('mouseleave', hideTip);
+  });
+
+  wrap.appendChild(titleEl);
+  wrap.appendChild(subEl);
+  wrap.appendChild(svg);
+  container.appendChild(wrap);
+});
+
+// ── data table ────────────────────────────────────────────────────────────────
+const tableEl = document.getElementById('data-table');
+let rows = `<thead><tr>
+  <th>Animal</th><th>Group</th>
+  <th>Sections (n)</th>
+  <th>Total Lgals3 (mean)</th>
+  <th>Density /mm² (mean)</th>
+  <th>GFAP+ (mean)</th>
+</tr></thead><tbody>`;
+
+perAnimal.forEach(d => {
+  rows += `<tr>
+    <td>${d.id}</td>
+    <td>${d.grp}</td>
+    <td>${d.n}</td>
+    <td>${d.total.toFixed(1)}</td>
+    <td>${d.density.toFixed(1)}</td>
+    <td>${d.gfapPos.toFixed(2)}</td>
+  </tr>`;
+});
+
+// group summary rows
+['NgTG','NgB'].forEach(grp => {
+  const gd = perAnimal.filter(d=>d.grp===grp);
+  const tot = mean(gd.map(d=>d.total)), dens = mean(gd.map(d=>d.density)), gp = mean(gd.map(d=>d.gfapPos));
+  const stot=sem(gd.map(d=>d.total)), sdens=sem(gd.map(d=>d.density)), sgp=sem(gd.map(d=>d.gfapPos));
+  rows += `<tr style="font-weight:600;background:#f8f8f6">
+    <td colspan="2">${grp} mean ± SEM</td>
+    <td>—</td>
+    <td>${tot.toFixed(1)} ± ${stot.toFixed(1)}</td>
+    <td>${dens.toFixed(1)} ± ${sdens.toFixed(1)}</td>
+    <td>${gp.toFixed(2)} ± ${sgp.toFixed(2)}</td>
+  </tr>`;
+});
+
+// p-value row
+const pvals = metrics.map(m => {
+  const a = ngtg.map(d=>d[m.key]), b = ngb.map(d=>d[m.key]);
+  return welch(a,b).p;
+});
+rows += `<tr>
+  <td colspan="2" style="font-style:italic">p value (Welch's t)</td>
+  <td>—</td>
+  ${pvals.map(p=>`<td>${p.toFixed(3)}</td>`).join('')}
+</tr>`;
+
+rows += '</tbody>';
+tableEl.innerHTML = rows;
+</script>
