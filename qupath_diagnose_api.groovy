@@ -23,10 +23,27 @@ FeatureExtractors.class.methods
     .sort { it.name }
     .each { println "  ${it.name}(${it.parameterTypes*.simpleName.join(', ')})" }
 
-println "\n=== OpenCVMLClassifier instance methods ==="
-OpenCVMLClassifier.class.methods
-    .findAll { it.declaringClass == OpenCVMLClassifier.class || it.declaringClass.name.contains("qupath") }
-    .sort { it.name }
-    .each { println "  ${it.name}(${it.parameterTypes*.simpleName.join(', ')})" }
+println "\n=== OpenCVMLClassifier ALL methods (including inherited) ==="
+def cls = OpenCVMLClassifier.class
+while (cls != null && cls != Object.class) {
+    cls.declaredMethods.each { m ->
+        println "  [${cls.simpleName}] ${m.name}(${m.parameterTypes*.simpleName.join(', ')})"
+    }
+    cls = cls.superclass
+}
 
-println "\nDone — paste this output to get the correct API calls"
+println "\n=== Interfaces implemented by OpenCVMLClassifier ==="
+def allInterfaces = []
+def c = OpenCVMLClassifier.class
+while (c != null) {
+    allInterfaces.addAll(c.interfaces)
+    c = c.superclass
+}
+allInterfaces.each { iface ->
+    println "  ${iface.name}"
+    iface.methods.each { m ->
+        println "    ${m.name}(${m.parameterTypes*.simpleName.join(', ')})"
+    }
+}
+
+println "\nDone"
